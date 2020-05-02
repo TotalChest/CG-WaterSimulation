@@ -44,6 +44,7 @@ water_surface::water_surface() {
 }
 
 void water_surface::update() {
+    float sum = 0;
     // Вычисление новых высот
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
@@ -70,12 +71,15 @@ void water_surface::update() {
                 v4 = B[i][j + 1];
 
             C[i][j] = (1-1.985)*A[i][j] + 1.985*(v1 + v2 + v3 + v4)/4.0; 
+            sum += C[i][j];
         }
     }
 
+    float avg = sum / (N * N);
     // Обновление матриц
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
+            C[i][j] -= avg;
             A[i][j] = B[i][j];
             B[i][j] = C[i][j];
         }

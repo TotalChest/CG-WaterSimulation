@@ -36,7 +36,7 @@ public:
 
   void SetUniformMatrix(const std::string &location, const GLfloat *value) const;
 
-  void SetUniformVec3(const std::string &location, float v1, float v2, float v3) const;
+  void SetUniformVec4(const std::string &location, float v1, float v2, float v3, float v4) const;
 
 private:
   static GLuint LoadShaderObject(GLenum type, const std::string &filename);

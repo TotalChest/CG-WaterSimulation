@@ -220,7 +220,7 @@ void ShaderProgram::SetUniformMatrix(const std::string &location, const GLfloat 
   glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, value);
 }
 
-void ShaderProgram::SetUniformVec3(const std::string &location, float v1, float v2, float v3) const
+void ShaderProgram::SetUniformVec4(const std::string &location, float v1, float v2, float v3, float v4) const
 {
   GLint uniformLocation = glGetUniformLocation(shaderProgram, location.c_str());
   if (uniformLocation == -1)
@@ -228,5 +228,5 @@ void ShaderProgram::SetUniformVec3(const std::string &location, float v1, float 
     std::cerr << "Uniform  " << location << " not found" << std::endl;
     return;
   }
-  glUniform3f(uniformLocation, v1, v2, v3);
+  glUniform4f(uniformLocation, v1, v2, v3, v4);
 }

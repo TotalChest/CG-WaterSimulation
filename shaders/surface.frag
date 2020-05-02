@@ -27,5 +27,5 @@ void main () {
     for(int i = 0; i < LIGHTS_COUNT; i++)
         kd += CalcLight(Lights_pos[i], frag_normal, frag_position);
 
-    frag_color = vec4(kd * vec3(0.0, 0.149, 0.182), 0.6);
+    frag_color = vec4(kd * vec3(0.0, 0.149, 0.182), 0.7);
 }

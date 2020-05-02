@@ -10,6 +10,7 @@
 #include "GLM/gtc/type_ptr.hpp"
 #include "objects/water_surface.h"
 #include "objects/plane.h"
+#include "objects/cross.h"
 #include "functions.h"
 #include <GLFW/glfw3.h>
 #include <random>
@@ -135,17 +136,24 @@ int main(int argc, char** argv)
 		gl_error = glGetError();
 
 	// Загрузка шейдеров
-	std::unordered_map<GLenum, std::string> shaders;
-	shaders[GL_VERTEX_SHADER]   = "surface.vert";
-	shaders[GL_FRAGMENT_SHADER] = "surface.frag";
-	ShaderProgram surface_shader(shaders);
-	shaders[GL_VERTEX_SHADER]   = "floor.vert";
-	shaders[GL_FRAGMENT_SHADER] = "floor.frag";
-	ShaderProgram floor_shader(shaders);
+	std::unordered_map<GLenum, std::string> surface_shaders;
+	surface_shaders[GL_VERTEX_SHADER]   = "surface.vert";
+	surface_shaders[GL_FRAGMENT_SHADER] = "surface.frag";
+	ShaderProgram surface_shader(surface_shaders);
+	std::unordered_map<GLenum, std::string> floor_shaders;
+	floor_shaders[GL_VERTEX_SHADER]   = "floor.vert";
+	floor_shaders[GL_FRAGMENT_SHADER] = "floor.frag";
+	ShaderProgram floor_shader(floor_shaders);
+	std::unordered_map<GLenum, std::string> target_shaders;
+	target_shaders[GL_VERTEX_SHADER]   = "target.vert";
+	target_shaders[GL_FRAGMENT_SHADER] = "target.frag";
+	ShaderProgram target_shader(target_shaders);
+
 
 	// Загрузка объектов
     water_surface water_surface;
     plane plane;
+    cross cross;
 
     // Загрузка текстур
    	GLuint floor_texture = create_texture("../textures/floor.jpg");
@@ -161,6 +169,21 @@ int main(int argc, char** argv)
 		glm::mat4 projection = glm::perspective(PI/4, (float)WIDTH / HEIGHT, 0.1f, 100.0f);
 		glm::mat4 inv_projection = glm::inverse(projection);
 
+		// Отррисовка центра
+		{
+			target_shader.StartUseShader();
+
+        	glm::mat4 model(1);
+        	model = glm::scale(model, glm::vec3(3.0/WIDTH, 3.0/HEIGHT, 1));
+        	target_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+
+			glBindVertexArray(cross.vao);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+
+			target_shader.StopUseShader();
+		}
+
         // Отрисовка бассейна
         {
             floor_shader.StartUseShader();
@@ -171,11 +194,12 @@ int main(int argc, char** argv)
 
          	// Пол
             glm::mat4 model(1);
-            model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+            model = glm::translate(model, glm::vec3(0.0f, -1.5f, 0.0f));
             model = glm::scale(model, glm::vec3(3, 1, 3));
 			model = glm::rotate(model, -PI/2.0f, glm::vec3(1.0f, 0.0f, 0.0f));
 
 			floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+			floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 1.0f);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, floor_texture);
 
@@ -186,9 +210,10 @@ int main(int argc, char** argv)
             // Задняя стена
             model = glm::mat4(1);
 			model = glm::translate(model, glm::vec3(0.0f, 0.0f, -3.0f));
-			model = glm::scale(model, glm::vec3(3, 2, 1));
+			model = glm::scale(model, glm::vec3(3, 1.5, 1));
 
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+            floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, floor_texture);
 
@@ -199,9 +224,10 @@ int main(int argc, char** argv)
             // Левая стена
             model = glm::mat4(1);
 			model = glm::translate(model, glm::vec3(-3.0f, 0.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1, 2, 3));
+			model = glm::scale(model, glm::vec3(1, 1.5, 3));
 			model = glm::rotate(model, PI/2.0f, glm::vec3(0.0f, 1.0f, 0.0f));
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+            floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, floor_texture);
 
@@ -212,9 +238,10 @@ int main(int argc, char** argv)
             // Правая стена
             model = glm::mat4(1);
 			model = glm::translate(model, glm::vec3(3.0f, 0.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1, 2, 3));
+			model = glm::scale(model, glm::vec3(1, 1.5, 3));
 			model = glm::rotate(model, -PI/2.0f, glm::vec3(0.0f, 1.0f, 0.0f));
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+            floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, floor_texture);
 
@@ -225,10 +252,10 @@ int main(int argc, char** argv)
             // Передняя стена
             model = glm::mat4(1);
 			model = glm::translate(model, glm::vec3(0.0f, 0.0f, 3.0f));
-			model = glm::scale(model, glm::vec3(3, 2, 1));
+			model = glm::scale(model, glm::vec3(3, 1.5, 1));
 			model = glm::rotate(model, PI, glm::vec3(0.0f, 1.0f, 0.0f));
-
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+            floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, floor_texture);
 
