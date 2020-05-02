@@ -25,12 +25,16 @@ glm::vec3 cam_up(0.0f, 1.0f, 0.0f);
 // Обработка нажатий
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-    if(key == GLFW_KEY_R && action == GLFW_PRESS)
+    if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     	glfwSetWindowShouldClose(window, GL_TRUE);
     if(key == GLFW_KEY_Q && action == GLFW_PRESS)
         carcass = !carcass;
     if(key == GLFW_KEY_E && action == GLFW_PRESS) 
         boat_ex = !boat_ex;
+    if (key == GLFW_KEY_F5 && action == GLFW_PRESS)
+        pause= true;
+    if (key == GLFW_KEY_F6 && action == GLFW_PRESS)
+        pause= false;
     if(action == GLFW_PRESS)
 		keys[key] = true;
 	else if(action == GLFW_RELEASE)
@@ -84,6 +88,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 void raise_water(water_surface &W, float x, float z, float force = 0.3)
 {
+    if(pause)
+        return;
+
     int i = (x + h) / (2.0 * h) * W.N;
     int j = (z + h) / (2.0 * h) * W.N;
 
@@ -296,7 +303,8 @@ int main(int argc, char** argv)
         // Отрисовка поверхности
         {
         	// Обновление карты высот
-        	water_surface.update();
+            if(!pause)
+        	   water_surface.update();
 
             surface_shader.StartUseShader(); 
 

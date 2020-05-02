@@ -3,6 +3,7 @@
 
 float h = 4.0;
 bool carcass = false;
+bool pause = false;
 bool keys[1024]; 
 bool boat_ex = false;
 GLfloat deltaTime = 0.0f;
