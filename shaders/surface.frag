@@ -33,7 +33,7 @@ void main () {
         kd += CalcLight(Lights_pos[i], frag_normal, frag_position);
 
     vec3 incident = normalize(frag_position - cam_pos.xyz);
-    vec3 refraction = refract(incident, frag_normal, 0.85);
+    vec3 refraction = refract(incident, frag_normal, 0.8);
 
     vec3 floor_hit_point = frag_position + refraction * ((2 - frag_position.y) / refraction.y);
     vec2 floor_texture_coord = ((floor_hit_point + vec3(h, 0.0, h)) / (2.0 * h)).xz;
