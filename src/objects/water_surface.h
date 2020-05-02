@@ -6,11 +6,12 @@ class water_surface {
         GLuint points_vbo, normals_vbo;
 
     public:
-        static const int N = 150;
+        static const int N = 170;
 
         float A[N][N];
         float B[N][N];
         float C[N][N];
+        float h;
 
         GLuint vao, elements_vbo;
 
@@ -22,17 +23,18 @@ class water_surface {
         float normals_buffer[N * N * 3];
         int elements_buffer[(N - 1) * (N - 1) * 2 * 3];
 
-        water_surface();
+        water_surface(float new_h);
 
         void update();
 };
 
 
-water_surface::water_surface() {
+water_surface::water_surface(float new_h) {
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &elements_vbo);
     glGenBuffers(1, &normals_vbo);
     glGenBuffers(1, &points_vbo);
+    h = new_h;
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
@@ -89,8 +91,8 @@ void water_surface::update() {
     int point_index = 0;
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            float x = -3 + 6 * (i/(float)(N-1));
-            float y = -3 + 6 * (j/(float)(N-1));    
+            float x = -h + 2 * h * (i/(float)(N-1));
+            float y = -h + 2 * h * (j/(float)(N-1));    
             points[point_index++] = glm::vec3(x, C[i][j], y);
         }
     }
@@ -187,7 +189,7 @@ void water_surface::update() {
             }
 
             normal = glm::normalize(normal);
-            this->normals[p1_i] = normal; 
+            normals[p1_i] = normal; 
         }
     }
 

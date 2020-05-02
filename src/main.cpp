@@ -8,25 +8,29 @@
 #include "GLM/glm.hpp"
 #include "GLM/gtc/matrix_transform.hpp"
 #include "GLM/gtc/type_ptr.hpp"
+#include "GLM/gtx/rotate_vector.hpp"
 #include "objects/water_surface.h"
 #include "objects/plane.h"
 #include "objects/cross.h"
+#include "objects/boat.h"
 #include "functions.h"
 #include <GLFW/glfw3.h>
 #include <random>
 #include "properties.h"
 
-
 glm::vec3 cam_pos(0.0f, 5.0f, 5.0f); 
 glm::vec3 cam_front(0.0f, -1.0f, -1.0f);
 glm::vec3 cam_up(0.0f, 1.0f, 0.0f);
 
-
 // Обработка нажатий
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-    if(key == GLFW_KEY_Q && action == GLFW_PRESS)
+    if(key == GLFW_KEY_R && action == GLFW_PRESS)
     	glfwSetWindowShouldClose(window, GL_TRUE);
+    if(key == GLFW_KEY_Q && action == GLFW_PRESS)
+        carcass = !carcass;
+    if(key == GLFW_KEY_E && action == GLFW_PRESS) 
+        boat_ex = !boat_ex;
     if(action == GLFW_PRESS)
 		keys[key] = true;
 	else if(action == GLFW_RELEASE)
@@ -36,7 +40,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 // Движение камеры
 void do_movement()
 {
-    GLfloat cameraSpeed = 5.0f * deltaTime;
+    GLfloat cameraSpeed = 4.0f * deltaTime;
     if(keys[GLFW_KEY_W])
         cam_pos += cameraSpeed * cam_front;
     if(keys[GLFW_KEY_S])
@@ -76,6 +80,23 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	front.y = sin(glm::radians(pitch));
 	front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
 	cam_front = glm::normalize(front);
+}
+
+void raise_water(water_surface &W, float x, float z, float force = 0.3)
+{
+    int i = (x + h) / (2.0 * h) * W.N;
+    int j = (z + h) / (2.0 * h) * W.N;
+
+    if (i > 0 && j > 0 && i < W.N - 1 && j < W.N - 1) { 
+        W.B[i-1][j-1] = force;
+        W.B[i-1][j] = force;
+        W.B[i-1][j+1] = force;
+        W.B[i+1][j-1] = force;
+        W.B[i+1][j] = force;
+        W.B[i+1][j+1] = force;
+        W.B[i][j+1] = force;
+        W.B[i][j-1] = force;
+    }
 }
 
 int initGL()
@@ -124,6 +145,7 @@ int main(int argc, char** argv)
 
 	// Настройки
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 	glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glfwSwapInterval(1);
@@ -148,12 +170,16 @@ int main(int argc, char** argv)
 	target_shaders[GL_VERTEX_SHADER]   = "target.vert";
 	target_shaders[GL_FRAGMENT_SHADER] = "target.frag";
 	ShaderProgram target_shader(target_shaders);
-
+    std::unordered_map<GLenum, std::string> boat_shaders;
+    boat_shaders[GL_VERTEX_SHADER]   = "boat.vert";
+    boat_shaders[GL_FRAGMENT_SHADER] = "boat.frag";
+    ShaderProgram boat_shader(boat_shaders);
 
 	// Загрузка объектов
-    water_surface water_surface;
+    water_surface water_surface(h);
     plane plane;
     cross cross;
+    boat boat(glm::vec3(0.0, 0.0, 0.0), glm::vec2(0.0, -1.0));
 
     // Загрузка текстур
    	GLuint floor_texture = create_texture("../textures/floor.jpg");
@@ -194,8 +220,8 @@ int main(int argc, char** argv)
 
          	// Пол
             glm::mat4 model(1);
-            model = glm::translate(model, glm::vec3(0.0f, -1.5f, 0.0f));
-            model = glm::scale(model, glm::vec3(3, 1, 3));
+            model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(h, 1, h));
 			model = glm::rotate(model, -PI/2.0f, glm::vec3(1.0f, 0.0f, 0.0f));
 
 			floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
@@ -209,8 +235,8 @@ int main(int argc, char** argv)
 
             // Задняя стена
             model = glm::mat4(1);
-			model = glm::translate(model, glm::vec3(0.0f, 0.0f, -3.0f));
-			model = glm::scale(model, glm::vec3(3, 1.5, 1));
+			model = glm::translate(model, glm::vec3(0.0f, 0.0f, -h));
+			model = glm::scale(model, glm::vec3(h, 2.0, 1));
 
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
             floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
@@ -223,8 +249,8 @@ int main(int argc, char** argv)
 
             // Левая стена
             model = glm::mat4(1);
-			model = glm::translate(model, glm::vec3(-3.0f, 0.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1, 1.5, 3));
+			model = glm::translate(model, glm::vec3(-h, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(1, 2.0, h));
 			model = glm::rotate(model, PI/2.0f, glm::vec3(0.0f, 1.0f, 0.0f));
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
             floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
@@ -237,8 +263,8 @@ int main(int argc, char** argv)
 
             // Правая стена
             model = glm::mat4(1);
-			model = glm::translate(model, glm::vec3(3.0f, 0.0f, 0.0f));
-			model = glm::scale(model, glm::vec3(1, 1.5, 3));
+			model = glm::translate(model, glm::vec3(h, 0.0f, 0.0f));
+			model = glm::scale(model, glm::vec3(1, 2.0, h));
 			model = glm::rotate(model, -PI/2.0f, glm::vec3(0.0f, 1.0f, 0.0f));
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
             floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
@@ -251,8 +277,8 @@ int main(int argc, char** argv)
 
             // Передняя стена
             model = glm::mat4(1);
-			model = glm::translate(model, glm::vec3(0.0f, 0.0f, 3.0f));
-			model = glm::scale(model, glm::vec3(3, 1.5, 1));
+			model = glm::translate(model, glm::vec3(0.0f, 0.0f, h));
+			model = glm::scale(model, glm::vec3(h, 2.0, 1));
 			model = glm::rotate(model, PI, glm::vec3(0.0f, 1.0f, 0.0f));
             floor_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
             floor_shader.SetUniformVec4("text_coord", 0.0f, 0.0f, 1.0f, 0.5f);
@@ -280,13 +306,67 @@ int main(int argc, char** argv)
 
         	glm::mat4 model(1);
         	surface_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+        	surface_shader.SetUniform("h", h);
+
+        	surface_shader.SetUniformVec4("cam_pos",  cam_pos[0],  cam_pos[1],  cam_pos[2], 1.0f);
+        	glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, floor_texture);
+
+            if(carcass)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
             glBindVertexArray(water_surface.vao);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, water_surface.elements_vbo);
             glDrawElements(GL_TRIANGLES, (water_surface.N - 1) * (water_surface.N - 1) * 2 * 3, GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
 
+            if(carcass)
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
          	surface_shader.StopUseShader();
+        }
+
+
+        // Обработка лодки
+        if(boat_ex) {
+            boat_shader.StartUseShader();
+
+            if(keys[GLFW_KEY_UP]) {
+                boat.position += 1.0f * deltaTime * glm::vec3(boat.front[0], 0, boat.front[1]);
+                if(boat.position[0] >= h-0.7)
+                    boat.position[0] = h-0.7;
+                if(boat.position[2] >= h-0.7)
+                    boat.position[2] = h-0.7;
+                if(boat.position[0] <= -h+0.7)
+                    boat.position[0] = -h+0.7;
+                if(boat.position[2] <= -h+0.7)
+                    boat.position[2] = -h+0.7;
+                raise_water(water_surface, boat.position[0] + 0.5*boat.front[0], boat.position[2] + 0.5*boat.front[1], 0.2);
+            }
+            if(keys[GLFW_KEY_LEFT]) {
+                boat.front = glm::rotate(boat.front, -PI/120.0f);
+                raise_water(water_surface, boat.position[0], boat.position[2], 0.2);
+            }
+            if(keys[GLFW_KEY_RIGHT]) {
+                boat.front = glm::rotate(boat.front, PI/120.0f);
+                raise_water(water_surface, boat.position[0], boat.position[2], 0.2);
+            }
+
+            // Управление камерой
+            boat_shader.SetUniformMatrix("view_mat", glm::value_ptr(view));
+            boat_shader.SetUniformMatrix("proj_mat", glm::value_ptr(projection));
+
+            glm::mat4 model(1);
+            model = glm::translate(model, boat.position + glm::vec3(0.0, -0.1, 0.0));
+            model = glm::scale(model, glm::vec3(0.35, 1, 0.35));
+            model = glm::rotate(model, glm::atan(boat.front[0], boat.front[1]), glm::vec3(0.0f, 1.0f, 0.0f));
+            boat_shader.SetUniformMatrix("model_mat", glm::value_ptr(model));
+
+            glBindVertexArray(boat.vao);
+            glDrawArrays(GL_TRIANGLES, 0, 117);
+            glBindVertexArray(0);
+
+            boat_shader.StopUseShader();
         }
 
 
@@ -301,24 +381,11 @@ int main(int argc, char** argv)
             if (mouse_state == GLFW_PRESS && !is_mouse_down) {
                 is_mouse_down = true;
 
-                if (mouse_intersection.x > -3.0 &&
-                        mouse_intersection.x < 3.0 &&
-                        mouse_intersection.z > -3.0 &&
-                        mouse_intersection.z < 3.0) {
-                    int i = (mouse_intersection.x + 3.0) / 6.0 * water_surface.N;
-                    int j = (mouse_intersection.z + 3.0) / 6.0 * water_surface.N;
-
-                    if (i > 1 && j > 1 && i < water_surface.N - 2 && j < water_surface.N - 2) { 
-                        water_surface.B[i][j] = 1.0;
-                        water_surface.B[i-1][j-1] = 0.6;
-                        water_surface.B[i-1][j] = 0.6;
-                        water_surface.B[i-1][j+1] = 0.6;
-                        water_surface.B[i+1][j-1] = 0.6;
-                        water_surface.B[i+1][j] = 0.6;
-                        water_surface.B[i+1][j+1] = 0.6;
-                        water_surface.B[i][j+1] = 0.6;
-                        water_surface.B[i][j-1] = 0.6;
-                    }
+                if (mouse_intersection.x > -h &&
+                        mouse_intersection.x < h &&
+                        mouse_intersection.z > -h &&
+                        mouse_intersection.z < h) {
+                    raise_water(water_surface, mouse_intersection.x, mouse_intersection.z, 0.4);
                 }
             }
             else if (mouse_state == GLFW_RELEASE && is_mouse_down) {
